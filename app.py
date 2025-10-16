@@ -9,6 +9,7 @@ from google.oauth2.service_account import Credentials
 # ✅ Streamlit Cloud secrets에서 구글 서비스 계정 불러오기
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
+
 def get_gspread_client():
     sa_info = st.secrets["google_service_account"]
     creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
