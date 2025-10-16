@@ -6,25 +6,24 @@ import datetime as dt
 import gspread
 from google.oauth2.service_account import Credentials
 
-st.set_page_config(page_title="야자 출석 대시보드", page_icon="📊", layout="wide")
+# ✅ Streamlit Cloud secrets에서 구글 서비스 계정 불러오기
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
 
-# ----------------------------- #
-# Google Sheets 로드
-# ----------------------------- #
+def get_gspread_client():
+    sa_info = st.secrets["google_service_account"]
+    creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
+    return gspread.authorize(creds)
+
 @st.cache_data(ttl=60)
 def load_sheet(sheet_key: str, worksheet: str) -> pd.DataFrame:
-    scopes = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-    creds = get_creds(scopes)
-    gc = gspread.authorize(creds)
+    gc = get_gspread_client()
     sh = gc.open_by_key(sheet_key)
     ws = sh.worksheet(worksheet)
 
-    # 빈 헤더('') 중복 이슈 방지
     EXPECTED_HEADERS = ["날짜","교시","좌석번호","이메일","시간","학년","반","번호","이름"]
     rows = ws.get_all_records(head=1, expected_headers=EXPECTED_HEADERS)
     df = pd.DataFrame(rows)
 
-    # 타입 정리
     if "날짜" in df.columns:
         df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce").dt.date
     for c in ["학년", "반", "번호"]:
@@ -34,12 +33,12 @@ def load_sheet(sheet_key: str, worksheet: str) -> pd.DataFrame:
         df["교시"] = df["교시"].astype(str).str.replace("교시", "", regex=False)
         df["교시"] = pd.to_numeric(df["교시"], errors="coerce").astype("Int64")
 
-    # 보조 컬럼
     df["소속"] = df.apply(lambda r: f"{r.get('학년','')}-{r.get('반','')}", axis=1)
-    weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}  # 0=월..6=일
+    weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
     df["요일"] = pd.to_datetime(df["날짜"], errors="coerce").dt.weekday.map(weekday_map)
 
     return df
+
 
 # ----------------------------- #
 # 지표/표/차트 헬퍼
