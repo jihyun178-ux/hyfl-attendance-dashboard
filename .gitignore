@@ -1,0 +1,6 @@
+# 로컬 비밀키/가상환경/캐시 제외
+service_account.json
+.venv/
+__pycache__/
+*.pyc
+.streamlit/secrets.toml
