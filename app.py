@@ -253,15 +253,23 @@ st.markdown("#### 테이블 미리보기")
 st.dataframe(df.head(200), use_container_width=True)
 
 
-# --- 추가: 로컬/클라우드 겸용 인증 함수 ---
-from google.oauth2.service_account import Credentials
+# --- 추가: 로컬/클라우드 겸용 인증 함수
 
-def get_creds(scopes):
-    # Streamlit Cloud에서는 secrets에 넣어둔 서비스 계정 정보를 사용
-    if "gcp_service_account" in st.secrets:
-        return Credentials.from_service_account_info(
-            dict(st.secrets["gcp_service_account"]),  # secrets.toml의 키 이름
-            scopes=scopes
-        )
-    # 로컬에서는 기존 JSON 파일 사용
+# --- 인증 헬퍼: Streamlit Cloud(Secrets) + 로컬(JSON) 둘 다 지원 ---
+from google.oauth2.service_account import Credentials
+import streamlit as st
+
+SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
+
+def get_creds(scopes=None):
+    """Streamlit Cloud에서는 st.secrets, 로컬에서는 service_account.json 사용"""
+    scopes = scopes or SCOPES
+
+    # ✅ Cloud: Secrets(TOML)에 넣은 서비스 계정 사용
+    if "google_service_account" in st.secrets:
+        info = dict(st.secrets["google_service_account"])
+        return Credentials.from_service_account_info(info, scopes=scopes)
+
+    # ✅ Local: 프로젝트 폴더의 JSON 파일 사용
     return Credentials.from_service_account_file("service_account.json", scopes=scopes)
+
