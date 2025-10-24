@@ -296,21 +296,41 @@ with tab_homeroom:
             st.markdown("#### 학생별 요일표")
             weekday_pivot_by_student(my_class_df)
 
+
 with tab_trend:
     st.markdown("### 날짜별 총 체크 추이")
     if df.empty:
-        st.info("📭 표시할 데이터가 없습니다.")
+        st.info("표시할 데이터가 없습니다.")
     else:
-        g = df.groupby("날짜").size().reset_index(name="건수")
-        chart = alt.Chart(g).mark_line(point=True).encode(
-            x=alt.X("yearmonthdate(날짜):T", axis=alt.Axis(title="날짜")),
-            y=alt.Y("건수:Q", axis=alt.Axis(title="체크 건수")),
-            tooltip=["날짜:T", "건수:Q"]
-        ).properties(
-            height=400
-        )
+        # 안전: 요일 컬럼이 없으면 생성
+        if "요일" not in df.columns:
+            weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
+            df["요일"] = pd.to_datetime(df["날짜"], errors="coerce").dt.weekday.map(weekday_map)
 
-        st.altair_chart(chart, use_container_width=True)
+        # 1) 주말 제외(월~금만)
+        df_weekdays = df[df["요일"].isin(["월", "화", "수", "목", "금"])].copy()
+
+        if df_weekdays.empty:
+            st.info("기간 내 평일(월~금) 데이터가 없습니다.")
+        else:
+            # 2) 날짜별 집계 + 정렬
+            g = (df_weekdays.groupby("날짜")
+                            .size()
+                            .reset_index(name="건수")
+                            .sort_values("날짜"))
+
+            # 3) 날짜만(연-월-일) 축 표시 + 마커 크게
+            base = alt.Chart(g).encode(
+                x=alt.X("yearmonthdate(날짜):T", axis=alt.Axis(title="날짜")),
+                y=alt.Y("건수:Q", axis=alt.Axis(title="체크 건수")),
+                tooltip=[
+                    alt.Tooltip("yearmonthdate(날짜):T", title="날짜"),
+                    alt.Tooltip("건수:Q", title="건수"),
+                ],
+            )
+
+            chart = base.mark_line(strokeWidth=3) + base.mark_point(size=140)  # 마커 크게
+            st.altair_chart(chart, use_container_width=True)
 
 st.divider()
 st.markdown("#### 테이블 미리보기")
