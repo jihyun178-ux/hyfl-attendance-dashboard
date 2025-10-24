@@ -313,15 +313,15 @@ with tab_trend:
                                .reset_index(name="건수")
                                .sort_values("날짜"))
 
-            # 3) 날짜 라벨(요일 포함) 생성: 10/21 (화) 형태
+            # 3) 날짜 라벨(요일 포함): 10/21 (화)
             weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
             g["날짜라벨"] = g["날짜"].apply(lambda d: f"{d:%m/%d} ({weekday_map[pd.to_datetime(d).weekday()]})")
 
-            # 4) 문자형 X축으로 주말 눈금 자체 제거 + 순서 고정
+            # 4) 문자형 X축으로 요일 표시 + 가로 방향 라벨
             base = alt.Chart(g).encode(
                 x=alt.X("날짜라벨:O",
-                        sort=list(g["날짜라벨"]),  # 날짜 순으로 고정
-                        axis=alt.Axis(title="날짜")),
+                        sort=list(g["날짜라벨"]),
+                        axis=alt.Axis(title="날짜", labelAngle=0)),  # ← 가로 정렬
                 y=alt.Y("건수:Q", axis=alt.Axis(title="체크 건수")),
                 tooltip=[
                     alt.Tooltip("yearmonthdate(날짜):T", title="날짜"),
