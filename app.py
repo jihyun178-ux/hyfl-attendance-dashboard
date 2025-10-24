@@ -240,11 +240,23 @@ with tab_summary:
     with col1:
         st.markdown("### 체크인수 TOP3")
         t1 = top3_checkin(df)
-        safe_table(t1, placeholder_cols=["이름","소속","체크인수","출석일수"], msg="📭 체크인 데이터가 없습니다.")
+        if t1.empty:
+            st.info("📭 체크인 데이터가 없습니다.")
+            st.dataframe(pd.DataFrame({"이름": [], "소속": [], "체크인수": [], "출석일수": []}),
+                        use_container_width=True)
+        else:
+            st.dataframe(t1, use_container_width=True)
+
     with col2:
         st.markdown("### 출석일수 TOP3")
         t2 = top3_attendance_days(df)
-        safe_table(t2, placeholder_cols=["이름","소속","출석일수","체크인수"], msg="📭 출석일수 데이터가 없습니다.")
+        if t2.empty:
+            st.info("📭 출석일수 데이터가 없습니다.")
+            st.dataframe(pd.DataFrame({"이름": [], "소속": [], "출석일수": [], "체크인수": []}),
+                        use_container_width=True)
+        else:
+            st.dataframe(t2, use_container_width=True)
+
 
     st.markdown("---")
     st.markdown("### 학년별 TOP3")
