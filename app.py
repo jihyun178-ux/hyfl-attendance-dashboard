@@ -82,7 +82,7 @@ def kpi(df: pd.DataFrame):
     c3.metric("운영 일수", df["날짜"].nunique() if "날짜" in df.columns else 0)
 
 def top3_checkin(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty: 
+    if df.empty:
         return pd.DataFrame(columns=["이름","소속","체크인수","출석일수"])
     g = (df.groupby(["이름","소속"])
            .agg(체크인수=("이름","size"), 출석일수=("날짜","nunique"))
@@ -92,7 +92,7 @@ def top3_checkin(df: pd.DataFrame) -> pd.DataFrame:
     return g
 
 def top3_attendance_days(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty: 
+    if df.empty:
         return pd.DataFrame(columns=["이름","소속","출석일수","체크인수"])
     g = (df.groupby(["이름","소속"])
            .agg(출석일수=("날짜","nunique"), 체크인수=("이름","size"))
@@ -197,7 +197,8 @@ with st.sidebar:
     f_query = st.text_input("검색(이름/이메일)")
 
 if df0.empty:
-    st.info("왼쪽에서 시트 키/워크시트를 입력하고, 같은 폴더에 service_account.json 파일이 있어야 합니다.")
+    st.info("왼쪽에서 시트 키/워크시트를 입력하고, **Settings → Secrets**에 서비스 계정(JSON)을 넣었거나, \
+프로젝트 폴더에 `service_account.json` 파일이 있어야 합니다.")
     st.stop()
 
 # ----------------------------- #
@@ -297,3 +298,6 @@ with tab_trend:
 st.divider()
 st.markdown("#### 테이블 미리보기")
 st.dataframe(df.head(200), use_container_width=True)
+
+# 빌드 버전 표기 (배포 반영 확인용)
+st.caption("🔧 build: safe_table & merge-fix v1")
