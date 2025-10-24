@@ -296,41 +296,42 @@ with tab_homeroom:
             st.markdown("#### 학생별 요일표")
             weekday_pivot_by_student(my_class_df)
 
-
 with tab_trend:
     st.markdown("### 날짜별 총 체크 추이")
     if df.empty:
         st.info("표시할 데이터가 없습니다.")
     else:
-        # 안전: 요일 컬럼이 없으면 생성
-        if "요일" not in df.columns:
-            weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
-            df["요일"] = pd.to_datetime(df["날짜"], errors="coerce").dt.weekday.map(weekday_map)
-
-        # 1) 주말 제외(월~금만)
+        # 1) 평일만 남기기
         df_weekdays = df[df["요일"].isin(["월", "화", "수", "목", "금"])].copy()
 
         if df_weekdays.empty:
-            st.info("기간 내 평일(월~금) 데이터가 없습니다.")
+            st.info("기간 내 평일 데이터가 없습니다.")
         else:
-            # 2) 날짜별 집계 + 정렬
+            # 2) 날짜별 집계 (정렬)
             g = (df_weekdays.groupby("날짜")
-                            .size()
-                            .reset_index(name="건수")
-                            .sort_values("날짜"))
+                               .size()
+                               .reset_index(name="건수")
+                               .sort_values("날짜"))
 
-            # 3) 날짜만(연-월-일) 축 표시 + 마커 크게
+            # 3) 날짜 라벨(요일 포함) 생성: 10/21 (화) 형태
+            weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
+            g["날짜라벨"] = g["날짜"].apply(lambda d: f"{d:%m/%d} ({weekday_map[pd.to_datetime(d).weekday()]})")
+
+            # 4) 문자형 X축으로 주말 눈금 자체 제거 + 순서 고정
             base = alt.Chart(g).encode(
-                x=alt.X("yearmonthdate(날짜):T", axis=alt.Axis(title="날짜")),
+                x=alt.X("날짜라벨:O",
+                        sort=list(g["날짜라벨"]),  # 날짜 순으로 고정
+                        axis=alt.Axis(title="날짜")),
                 y=alt.Y("건수:Q", axis=alt.Axis(title="체크 건수")),
                 tooltip=[
                     alt.Tooltip("yearmonthdate(날짜):T", title="날짜"),
-                    alt.Tooltip("건수:Q", title="건수"),
-                ],
+                    alt.Tooltip("건수:Q", title="건수")
+                ]
             )
 
-            chart = base.mark_line(strokeWidth=3) + base.mark_point(size=140)  # 마커 크게
+            chart = base.mark_line(strokeWidth=3) + base.mark_point(size=140)
             st.altair_chart(chart, use_container_width=True)
+
 
 st.divider()
 st.markdown("#### 테이블 미리보기")
