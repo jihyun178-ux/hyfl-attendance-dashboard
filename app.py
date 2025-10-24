@@ -303,8 +303,13 @@ with tab_trend:
     else:
         g = df.groupby("날짜").size().reset_index(name="건수")
         chart = alt.Chart(g).mark_line(point=True).encode(
-            x="날짜:T", y="건수:Q", tooltip=["날짜:T","건수:Q"]
+            x=alt.X("yearmonthdate(날짜):T", axis=alt.Axis(title="날짜")),
+            y=alt.Y("건수:Q", axis=alt.Axis(title="체크 건수")),
+            tooltip=["날짜:T", "건수:Q"]
+        ).properties(
+            height=400
         )
+
         st.altair_chart(chart, use_container_width=True)
 
 st.divider()
