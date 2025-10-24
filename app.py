@@ -6,35 +6,28 @@ import datetime as dt
 import gspread
 from google.oauth2.service_account import Credentials
 
-# ✅ Streamlit Cloud secrets에서 구글 서비스 계정 불러오기
+st.set_page_config(page_title="야자 출석 대시보드", page_icon="📊", layout="wide")
+
+# ----------------------------- #
+# 인증/상수/헬퍼
+# ----------------------------- #
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-
-
-def get_gspread_client():
-    sa_info = st.secrets["google_service_account"]
-    creds = Credentials.from_service_account_info(sa_info, scopes=SCOPES)
-    return gspread.authorize(creds)
-
-<<<<<<< HEAD
-=======
-# ----------------------------- #
-# 인증 함수 (상단으로 이동: load_sheet에서 바로 사용)
-# ----------------------------- #
-def get_creds(scopes):
-    # Streamlit Cloud: secrets.toml 사용
-    if "gcp_service_account" in st.secrets:
-        return Credentials.from_service_account_info(
-            dict(st.secrets["gcp_service_account"]),
-            scopes=scopes
-        )
-    # 로컬: service_account.json 사용
-    return Credentials.from_service_account_file("service_account.json", scopes=scopes)
-
-# ----------------------------- #
-# 공통 상수/헬퍼
-# ----------------------------- #
 SCHOOL_GRADES = [1, 2, 3]  # 학교 체계에 맞게 조정
 WEEK_ORDER = ["월", "화", "수", "목", "금", "토", "일"]
+
+def get_creds(scopes=None):
+    """Streamlit Cloud는 st.secrets, 로컬은 service_account.json 사용."""
+    scopes = scopes or SCOPES
+    # Secrets 키 이름 호환: google_service_account / gcp_service_account 둘 다 지원
+    if "google_service_account" in st.secrets:
+        return Credentials.from_service_account_info(dict(st.secrets["google_service_account"]), scopes=scopes)
+    if "gcp_service_account" in st.secrets:
+        return Credentials.from_service_account_info(dict(st.secrets["gcp_service_account"]), scopes=scopes)
+    # Local JSON
+    return Credentials.from_service_account_file("service_account.json", scopes=scopes)
+
+def get_gspread_client():
+    return gspread.authorize(get_creds(SCOPES))
 
 def safe_table(df: pd.DataFrame,
                placeholder_cols: list | None = None,
@@ -52,7 +45,6 @@ def safe_table(df: pd.DataFrame,
 # ----------------------------- #
 # Google Sheets 로드
 # ----------------------------- #
->>>>>>> a5cce6c (fix: 빈 데이터 안전 처리 및 3학년 데이터 예외 처리)
 @st.cache_data(ttl=60)
 def load_sheet(sheet_key: str, worksheet: str) -> pd.DataFrame:
     gc = get_gspread_client()
@@ -63,6 +55,7 @@ def load_sheet(sheet_key: str, worksheet: str) -> pd.DataFrame:
     rows = ws.get_all_records(head=1, expected_headers=EXPECTED_HEADERS)
     df = pd.DataFrame(rows)
 
+    # 타입 정리
     if "날짜" in df.columns:
         df["날짜"] = pd.to_datetime(df["날짜"], errors="coerce").dt.date
     for c in ["학년", "반", "번호"]:
@@ -72,12 +65,12 @@ def load_sheet(sheet_key: str, worksheet: str) -> pd.DataFrame:
         df["교시"] = df["교시"].astype(str).str.replace("교시", "", regex=False)
         df["교시"] = pd.to_numeric(df["교시"], errors="coerce").astype("Int64")
 
+    # 보조 컬럼
     df["소속"] = df.apply(lambda r: f"{r.get('학년','')}-{r.get('반','')}", axis=1)
-    weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}
+    weekday_map = {0:"월",1:"화",2:"수",3:"목",4:"금",5:"토",6:"일"}  # 0=월..6=일
     df["요일"] = pd.to_datetime(df["날짜"], errors="coerce").dt.weekday.map(weekday_map)
 
     return df
-
 
 # ----------------------------- #
 # 지표/표/차트 헬퍼
@@ -89,7 +82,7 @@ def kpi(df: pd.DataFrame):
     c3.metric("운영 일수", df["날짜"].nunique() if "날짜" in df.columns else 0)
 
 def top3_checkin(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
+    if df.empty: 
         return pd.DataFrame(columns=["이름","소속","체크인수","출석일수"])
     g = (df.groupby(["이름","소속"])
            .agg(체크인수=("이름","size"), 출석일수=("날짜","nunique"))
@@ -99,7 +92,7 @@ def top3_checkin(df: pd.DataFrame) -> pd.DataFrame:
     return g
 
 def top3_attendance_days(df: pd.DataFrame) -> pd.DataFrame:
-    if df.empty:
+    if df.empty: 
         return pd.DataFrame(columns=["이름","소속","출석일수","체크인수"])
     g = (df.groupby(["이름","소속"])
            .agg(출석일수=("날짜","nunique"), 체크인수=("이름","size"))
@@ -264,7 +257,7 @@ with tab_summary:
                 st.dataframe(tops[g], use_container_width=True)
 
 with tab_homeroom:
-    st.markdown("### 담임용 보기 — 우리 반은 무슨 요일에 많이 올까?")
+    st.markdown("### 담임용 보기 — 우리 반은 무슨 요일에 많이 참석할까?")
     grades_opts = sorted(df0.get("학년", pd.Series(dtype="Int64")).dropna().unique().tolist())
     if not grades_opts:
         st.info("📭 학년 데이터가 없습니다.")
@@ -304,28 +297,3 @@ with tab_trend:
 st.divider()
 st.markdown("#### 테이블 미리보기")
 st.dataframe(df.head(200), use_container_width=True)
-<<<<<<< HEAD
-
-
-# --- 추가: 로컬/클라우드 겸용 인증 함수
-
-# --- 인증 헬퍼: Streamlit Cloud(Secrets) + 로컬(JSON) 둘 다 지원 ---
-from google.oauth2.service_account import Credentials
-import streamlit as st
-
-SCOPES = ["https://www.googleapis.com/auth/spreadsheets.readonly"]
-
-def get_creds(scopes=None):
-    """Streamlit Cloud에서는 st.secrets, 로컬에서는 service_account.json 사용"""
-    scopes = scopes or SCOPES
-
-    # ✅ Cloud: Secrets(TOML)에 넣은 서비스 계정 사용
-    if "google_service_account" in st.secrets:
-        info = dict(st.secrets["google_service_account"])
-        return Credentials.from_service_account_info(info, scopes=scopes)
-
-    # ✅ Local: 프로젝트 폴더의 JSON 파일 사용
-    return Credentials.from_service_account_file("service_account.json", scopes=scopes)
-
-=======
->>>>>>> a5cce6c (fix: 빈 데이터 안전 처리 및 3학년 데이터 예외 처리)
